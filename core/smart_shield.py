@@ -151,9 +151,40 @@ class OpenShieldSmartAgent:
             "raw_scans": {},
         }
 
+        # Max conversation history to keep (to prevent token overflow)
+        self.max_history_length = 20
+
         # Legacy/Helper state needed for logic compatibility
         self._last_target: Optional[str] = None
         self._last_context: Optional[AgentContext] = None
+
+    def clear_history(self):
+        """Clear conversation history while keeping knowledge base."""
+        self.conversation_history = []
+        self.logger.info("Conversation history cleared")
+
+    def clear_all(self):
+        """Clear all memory including knowledge base."""
+        self.conversation_history = []
+        self.knowledge_base = {
+            "target": None,
+            "infrastructure": {},
+            "vulnerabilities": [],
+            "recon_data": {},
+            "raw_scans": {},
+        }
+        self._last_target = None
+        self._last_context = None
+        self.logger.info("All memory cleared")
+
+    def get_context_summary(self) -> str:
+        """Get a summary of current context for debugging."""
+        return f"""
+Target: {self.knowledge_base.get("target", "None")}
+History Length: {len(self.conversation_history)} messages
+Vulnerabilities: {len(self.knowledge_base.get("vulnerabilities", []))}
+Scans Performed: {list(self.knowledge_base.get("raw_scans", {}).keys())}
+"""
 
     # ... (existing methods _extract_target, _detect_intent, _run_scan) ...
 
@@ -197,7 +228,18 @@ class OpenShieldSmartAgent:
         parts.append("Use the gathered INTELLIGENCE below to answer the user's request.")
         parts.append("")
 
-        # 1. Target Intelligence (Accumulated)
+        # 1. Conversation History (for context awareness)
+        if self.conversation_history:
+            parts.append("=== CONVERSATION HISTORY ===")
+            # Include last 10 messages to avoid token overflow
+            recent_history = self.conversation_history[-10:]
+            for msg in recent_history:
+                role = msg["role"].upper()
+                content = msg["content"][:500]  # Truncate long messages
+                parts.append(f"[{role}]: {content}")
+            parts.append("")
+
+        # 2. Target Intelligence (Accumulated)
         if self.knowledge_base["target"]:
             parts.append(f"=== TARGET INTELLIGENCE: {self.knowledge_base['target']} ===")
 
@@ -214,7 +256,7 @@ class OpenShieldSmartAgent:
                     parts.append(f"- {str(v)[:200]}...")
             parts.append("")
 
-        # 2. Current Scan Context (Fresh)
+        # 3. Current Scan Context (Fresh)
         if context.scan_results:
             parts.append(f"=== NEW SCAN RESULTS ({context.intent}) ===")
             parts.append(json.dumps(context.scan_results, indent=2))
@@ -227,7 +269,13 @@ class OpenShieldSmartAgent:
         parts.append("1. Answer purely based on the Security Intelligence provided.")
         parts.append("2. If the user asks about previous results, refer to TARGET INTELLIGENCE.")
         parts.append("3. If a new scan happened, analyze the NEW SCAN RESULTS.")
-        parts.append("4. Be concise, professional, and actionable.")
+        parts.append(
+            "4. IMPORTANT: Use CONVERSATION HISTORY to understand context from previous messages."
+        )
+        parts.append(
+            "5. If user refers to 'it', 'that', 'those results', etc., refer to previous context."
+        )
+        parts.append("6. Be concise, professional, and actionable.")
 
         return "\n".join(parts)
 
@@ -380,6 +428,10 @@ class OpenShieldSmartAgent:
 
         # Add to history
         self.conversation_history.append({"role": "user", "content": user_message})
+
+        # Trim history if too long
+        if len(self.conversation_history) > self.max_history_length:
+            self.conversation_history = self.conversation_history[-self.max_history_length :]
 
         prompt = self._build_analysis_prompt(user_message, context)
 
