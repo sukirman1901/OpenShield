@@ -464,6 +464,7 @@ class OpenShieldApp(App):
                 yield QuickActionButton("🔧 Tools", id="btn-tools")
                 yield QuickActionButton("🔍 Full Scan", id="btn-fullscan")
                 yield QuickActionButton("🌐 Web Audit", id="btn-webaudit")
+                yield QuickActionButton("🗜️ Compact", id="btn-compact")
                 yield QuickActionButton("🤖 Models", id="btn-models")
 
         with Vertical(id="input-area"):
@@ -571,6 +572,10 @@ class OpenShieldApp(App):
     @on(Button.Pressed, "#btn-models")
     def on_models_pressed(self) -> None:
         self.show_models_modal()
+
+    @on(Button.Pressed, "#btn-compact")
+    def on_compact_pressed(self) -> None:
+        self._run_command("/compact")
 
     def _add_user(self, text: str) -> None:
         chat = self.query_one("#chat", VerticalScroll)

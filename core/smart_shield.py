@@ -186,6 +186,128 @@ Vulnerabilities: {len(self.knowledge_base.get("vulnerabilities", []))}
 Scans Performed: {list(self.knowledge_base.get("raw_scans", {}).keys())}
 """
 
+    def _estimate_tokens(self, text: str) -> int:
+        """Rough token estimation (avg 4 chars per token for English)."""
+        return len(text) // 4
+
+    def _get_context_token_count(self) -> int:
+        """Estimate total tokens in current conversation context."""
+        total = 0
+        for msg in self.conversation_history:
+            total += self._estimate_tokens(msg.get("content", ""))
+        # Add knowledge base estimate
+        total += self._estimate_tokens(json.dumps(self.knowledge_base))
+        return total
+
+    def should_auto_compact(self, threshold_percent: float = 0.80) -> bool:
+        """
+        Check if we should auto-compact based on token usage.
+        Uses 80% threshold by default (conservative, can be 95% like OpenCode).
+
+        Common context limits:
+        - GPT-4: 8K-128K tokens
+        - Claude: 100K-200K tokens
+        - Gemini: 32K-1M tokens
+        """
+        # Get model's context limit from config, default to 32K (Gemini default)
+        context_limit = self.config.get("ai", {}).get("context_limit", 32000)
+        current_tokens = self._get_context_token_count()
+        threshold = int(context_limit * threshold_percent)
+
+        should_compact = current_tokens >= threshold
+        if should_compact:
+            self.logger.warning(
+                f"Context approaching limit: {current_tokens}/{context_limit} tokens "
+                f"({(current_tokens / context_limit) * 100:.1f}%). Auto-compact recommended."
+            )
+        return should_compact
+
+    async def compact(self) -> str:
+        """
+        Summarize conversation and reset history (like OpenCode's /compact).
+
+        This creates a concise summary of:
+        - What was accomplished
+        - Current working target
+        - Key findings/vulnerabilities
+        - What we were working on
+
+        Then clears conversation_history but keeps the summary as context.
+        """
+        if not self.conversation_history:
+            return "Nothing to compact - conversation history is empty."
+
+        # Build summarization prompt
+        summary_prompt = self._build_compact_prompt()
+
+        # Generate summary using AI
+        system_instructions = (
+            "You are a summarization assistant. Create a concise but comprehensive "
+            "summary of the security testing session. Focus on actionable information."
+        )
+
+        try:
+            summary = await self.ai_client.generate(
+                summary_prompt, system_prompt=system_instructions
+            )
+        except Exception as e:
+            self.logger.error(f"Compact failed: {e}")
+            return f"Failed to generate summary: {e}"
+
+        # Store summary and clear history
+        old_message_count = len(self.conversation_history)
+        old_token_count = self._get_context_token_count()
+
+        self.conversation_history = [
+            {"role": "system", "content": f"[COMPACTED SESSION SUMMARY]\n{summary}"}
+        ]
+
+        new_token_count = self._get_context_token_count()
+
+        self.logger.info(
+            f"Compacted {old_message_count} messages ({old_token_count} tokens) "
+            f"-> 1 summary ({new_token_count} tokens)"
+        )
+
+        return summary
+
+    def _build_compact_prompt(self) -> str:
+        """Build the prompt for summarization."""
+        parts = [
+            "Summarize this security testing conversation. Include:",
+            "1. TARGET: What target(s) were analyzed",
+            "2. ACTIONS: What scans/tools were executed",
+            "3. FINDINGS: Key vulnerabilities or discoveries",
+            "4. STATUS: What we were working on / next steps",
+            "",
+            "Keep it concise but preserve important technical details.",
+            "",
+            "=== CONVERSATION TO SUMMARIZE ===",
+        ]
+
+        for msg in self.conversation_history:
+            role = msg["role"].upper()
+            content = msg["content"][:1000]  # Truncate very long messages
+            parts.append(f"[{role}]: {content}")
+
+        # Include knowledge base summary
+        if self.knowledge_base.get("target"):
+            parts.append("")
+            parts.append("=== ACCUMULATED KNOWLEDGE ===")
+            parts.append(f"Target: {self.knowledge_base['target']}")
+
+            if self.knowledge_base.get("vulnerabilities"):
+                parts.append(
+                    f"Vulnerabilities Found: {len(self.knowledge_base['vulnerabilities'])}"
+                )
+                for v in self.knowledge_base["vulnerabilities"][:5]:
+                    parts.append(f"  - {str(v)[:100]}")
+
+            if self.knowledge_base.get("raw_scans"):
+                parts.append(f"Scans Performed: {list(self.knowledge_base['raw_scans'].keys())}")
+
+        return "\n".join(parts)
+
     # ... (existing methods _extract_target, _detect_intent, _run_scan) ...
 
     def _update_knowledge(self, new_context: AgentContext):
@@ -283,6 +405,12 @@ Scans Performed: {list(self.knowledge_base.get("raw_scans", {}).keys())}
         """Main agent loop with memory."""
         self.logger.info(f"Agent processing: {user_message}")
         query = ""  # Prevent UnboundLocalError
+
+        # Auto-compact check (like OpenCode)
+        if self.should_auto_compact():
+            self.logger.info("Auto-compacting conversation due to context limit...")
+            summary = await self.compact()
+            self.logger.info(f"Auto-compact complete. Summary: {summary[:200]}...")
 
         # 1. Detect Intent
         intent, target = self._detect_intent(user_message)
