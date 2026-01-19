@@ -1,0 +1,104 @@
+# Guardian Configuration File
+# Default settings for AI-powered penetration testing
+
+# AI Configuration
+ai:
+  provider: cliproxy  # Options: gemini, cliproxy, openai
+  model: gemini-3-pro-preview
+  base_url: http://localhost:8317/v1  # Required for Cliproxy (Default port)
+  temperature: 0.2
+  max_tokens: 8000
+  timeout: 60
+  rate_limit: 2
+
+# Penetration Testing Settings
+pentest:
+  # Safety mode prevents automatic execution of risky commands
+  safe_mode: true
+  
+  # Maximum number of tools to run in parallel
+  max_parallel_tools: 3
+  
+  # Require user confirmation before executing any tool
+  require_confirmation: true
+  
+  # Maximum scan depth for recursive operations
+  max_depth: 3
+  
+  # Request timeout for tools (seconds)
+  tool_timeout: 300
+
+# Output Settings
+output:
+  # Default format: markdown, html, json
+  format: markdown
+  
+  # Save path for reports and outputs
+  save_path: ./reports
+  
+  # Include AI reasoning in reports
+  include_reasoning: true
+  
+  # Verbosity level: quiet, normal, verbose, debug
+  verbosity: normal
+
+# Scope Validation
+scope:
+  # Blacklisted IP ranges (CIDR notation)
+  blacklist:
+    - 127.0.0.0/8
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+  
+  # Require explicit scope file for scanning
+  require_scope_file: false
+  
+  # Maximum number of targets per scan
+  max_targets: 100
+
+# Tool Configuration
+tools:
+  nmap:
+    enabled: true
+    default_args: "-sV -sC"
+    timing: T4
+    
+  httpx:
+    enabled: true
+    threads: 50
+    timeout: 10
+    
+  subfinder:
+    enabled: true
+    sources: ["crtsh", "hackertarget"]
+    
+  nuclei:
+    enabled: true
+    severity: ["critical", "high", "medium"]
+    templates_path: ~/nuclei-templates
+
+# Workflow Settings
+workflows:
+  # Default workflow timeout (seconds)
+  timeout: 3600
+  
+  # Save intermediate results
+  save_intermediate: true
+  
+  # Resume from checkpoint on failure
+  resume_on_failure: true
+
+# Logging
+logging:
+  # Enable audit logging
+  enabled: true
+  
+  # Log file path
+  path: ./logs/openshield.log
+  
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: INFO
+  
+  # Log AI decisions
+  log_ai_decisions: true

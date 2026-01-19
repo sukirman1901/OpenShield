@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# OpenShield Launcher Script
+# Automatically uses the virtual environment python
+
+# Get the directory where this script is located
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+VENV_PYTHON="$DIR/venv/bin/python3"
+
+# Check if venv exists
+if [ ! -f "$VENV_PYTHON" ]; then
+    echo "❌ Error: Virtual environment not found at $DIR/venv"
+    echo "Please run installation first."
+    exit 1
+fi
+
+# Run OpenShield CLI using venv python
+"$VENV_PYTHON" -m cli.main "$@"

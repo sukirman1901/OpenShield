@@ -1,0 +1,38 @@
+# OpenShield - AI-Powered Penetration Testing Tool
+# Python 3.11+ required
+
+# CLI & TUI
+typer>=0.9.0
+rich>=13.0.0
+textual>=0.40.0
+
+# AI/LLM
+langchain>=0.1.0
+langchain-google-genai>=1.0.0
+langchain-openai>=0.1.0
+langchain-core>=0.1.0
+openai>=1.0.0
+google-generativeai>=0.3.0
+
+# Async & HTTP
+aiohttp>=3.9.0
+httpx>=0.25.0
+requests>=2.31.0
+
+# Web Scraping & Browser
+beautifulsoup4>=4.12.0
+playwright>=1.40.0
+playwright-stealth>=1.0.0
+
+# Data Processing
+pyyaml>=6.0.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# Utilities
+tqdm>=4.66.0
+regex>=2023.0.0
+
+# Optional: For enhanced functionality
+# langsmith>=0.0.60  # LangChain tracing
+# langgraph>=0.0.20  # Graph-based workflows

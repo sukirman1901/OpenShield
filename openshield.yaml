@@ -1,0 +1,47 @@
+ai:
+  provider: cliproxy
+  model: gemini-claude-sonnet-4-5-thinking
+  temperature: 0.2
+  base_url: "http://localhost:8317/v1"
+  api_key: "opencode"
+  available_models:
+    - {id: "gemini-claude-opus-4-5-thinking", name: "Claude Opus 4.5 Thinking"}
+    - {id: "gemini-claude-sonnet-4-5-thinking", name: "Claude Sonnet 4.5 Thinking"}
+    - {id: "gemini-3-pro-preview", name: "Gemini 3 Pro Preview"}
+    - {id: "gpt-5.2-codex(xhigh)", name: "GPT 5.2 Codex"}
+    - {id: "kiro-claude-opus-4-5-agentic", name: "Kiro Claude Agentic"}
+
+mcp:
+  exa_api_key: ""  # Set your Exa API key here or via env var EXA_API_KEY
+
+pentest:
+  safe_mode: true
+  require_confirmation: true
+  max_parallel_tools: 3
+
+browser:
+  headless: true
+  timeout: 30000
+  screenshot_on_vuln: true
+
+exploitation:
+  auto_test_exploits: false
+  sandbox_mode: true
+  max_exploit_attempts: 3
+  generate_poc: true
+
+remediation:
+  auto_apply_fixes: false
+  generate_backups: true
+
+output:
+  format: markdown
+  save_path: ./reports
+  verbosity: normal
+
+scope:
+  blacklist:
+    - 127.0.0.0/8
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
