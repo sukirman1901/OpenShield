@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/AI-Gemini%20%7C%20OpenAI-orange?logo=google&logoColor=white" alt="AI">
+  <img src="https://img.shields.io/badge/AI-Gemini%20%7C%20OpenAI%20%7C%20Cliproxy-orange?logo=google&logoColor=white" alt="AI">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey" alt="Platform">
 </p>
@@ -17,7 +17,7 @@
 
 ## 📖 Overview
 
-**OpenShield** is an AI-powered penetration testing CLI tool that uses Large Language Models (Gemini, OpenAI) to intelligently orchestrate security assessments. Instead of manually running individual tools, simply describe what you want to do in natural language, and OpenShield will:
+**OpenShield** is an AI-powered penetration testing CLI tool that uses Large Language Models (Gemini, OpenAI, Cliproxy) to intelligently orchestrate security assessments. Instead of manually running individual tools, simply describe what you want to do in natural language, and OpenShield will:
 
 1. **Understand** your security objectives
 2. **Select** the appropriate tools automatically
@@ -100,7 +100,9 @@ OpenShield/
 ### AI Provider (Choose One)
 - **Google Gemini** - Requires `GOOGLE_API_KEY`
 - **OpenAI** - Requires `OPENAI_API_KEY`
-- **OpenAI-Compatible** - Any OpenAI-compatible API (e.g., local LLM servers)
+- **Cliproxy** - OpenAI-compatible proxy for accessing multiple AI models (Recommended)
+  - Supports Gemini, Claude, GPT, and other models through a unified API
+  - Configure with `base_url` in config
 
 ### External Security Tools (Optional but Recommended)
 
@@ -176,14 +178,15 @@ playwright install chromium
 Create a `.env` file in the project root:
 
 ```bash
-# For Google Gemini
+# For Google Gemini (direct API)
 GOOGLE_API_KEY=your_gemini_api_key_here
 
-# For OpenAI
+# For OpenAI (direct API)
 OPENAI_API_KEY=your_openai_api_key_here
 
-# For OpenAI-compatible APIs (optional)
-OPENAI_BASE_URL=http://localhost:8000/v1
+# For Cliproxy (Recommended - supports multiple models)
+# No API key needed if running locally, or set your Cliproxy key
+CLIPROXY_API_KEY=your_cliproxy_key_here
 ```
 
 ### 6. Configure OpenShield
@@ -192,10 +195,18 @@ Edit `openshield.yaml` or `config/openshield.yaml`:
 
 ```yaml
 ai:
-  provider: gemini  # Options: gemini, openai, cliproxy
-  model: gemini-2.5-pro
+  # Provider options: gemini, openai, cliproxy
+  provider: cliproxy
+  
+  # Model to use (depends on provider)
+  model: gemini-3-pro-preview
+  
+  # For Cliproxy: specify the base URL of your proxy
+  base_url: http://localhost:8317/v1
+  
   temperature: 0.2
   max_tokens: 8000
+  rate_limit: 2  # Requests per minute
 
 pentest:
   safe_mode: true
@@ -206,6 +217,31 @@ pentest:
 output:
   format: markdown
   save_path: ./reports
+```
+
+#### Cliproxy Configuration Example
+
+If using Cliproxy (recommended for flexibility):
+
+```yaml
+ai:
+  provider: cliproxy
+  model: gemini-3-pro-preview  # or claude-3-opus, gpt-4-turbo, etc.
+  base_url: http://localhost:8317/v1
+  temperature: 0.2
+  max_tokens: 8000
+  rate_limit: 2
+  
+  # Optional: List available models for TUI model switcher
+  available_models:
+    - id: gemini-3-pro-preview
+      name: Gemini 3 Pro
+    - id: gemini-3-flash-preview
+      name: Gemini 3 Flash
+    - id: claude-3-opus
+      name: Claude 3 Opus
+    - id: gpt-4-turbo
+      name: GPT-4 Turbo
 ```
 
 ## 💻 Usage
@@ -325,13 +361,13 @@ reports/
 ```yaml
 # AI Configuration
 ai:
-  provider: gemini          # gemini, openai, cliproxy
-  model: gemini-2.5-pro     # Model name
-  base_url: null            # Custom API endpoint (for cliproxy)
+  provider: cliproxy         # gemini, openai, cliproxy (recommended)
+  model: gemini-3-pro-preview # Model name
+  base_url: http://localhost:8317/v1  # Cliproxy endpoint
   temperature: 0.2          # Creativity (0.0-1.0)
   max_tokens: 8000          # Max response length
   timeout: 60               # API timeout (seconds)
-  rate_limit: 60            # Requests per minute
+  rate_limit: 2             # Requests per minute
 
 # Penetration Testing Settings
 pentest:
